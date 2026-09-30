@@ -7,6 +7,7 @@ from typing import List
 import requests
 from ..services import market_data
 from .. import oauth2
+from decimal import Decimal
 
 router = APIRouter()
 
@@ -81,7 +82,7 @@ def delete_stock(id: int,
 
     return stock
 
-@router.post("/stocks/{stock_id}/purchase", status_code=status.HTTP_201_CREATED, response_model=schemas.getStock)
+@router.post("/stocks/{stock_id}/purchase", status_code=status.HTTP_201_CREATED, response_model=schemas.TransactionOut)
 def purchase_stock(stock_id: int,
                    data: schemas.PurchaseRequest,
                    db: Session=Depends(get_db),
@@ -89,8 +90,7 @@ def purchase_stock(stock_id: int,
     stock =db.query(models.Stocks).filter(models.Stocks.id == stock_id,
                                           models.Stocks.is_active == True).first()
     
-    user =db.query(models.User).filter(models.User.id == current_user.id,
-                                       models.Stocks.is_active == True).first()
+    user =db.query(models.User).filter(models.User.id == current_user.id).first()
 
     if not stock:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -103,7 +103,7 @@ def purchase_stock(stock_id: int,
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Insufficient Balance")
 
-    holding =db.query(models.Holdings).filter(models.Holdings.id == current_user.id,
+    holding =db.query(models.Holdings).filter(models.Holdings.user_id == current_user.id,
                                               models.Holdings.stock_id == stock_id).first()
     if holding:
         total_shares =holding.shares + data.shares
@@ -131,6 +131,42 @@ def purchase_stock(stock_id: int,
     db.refresh(new_transaction)
 
     return new_transaction
+
+@router.get("/stocks/receipt/{transaction_id}", response_model=schemas.Receipt)
+def stock_receipt(transaction_id: int,
+                  db: Session=Depends(get_db),
+                  current_user =Depends(oauth2.get_current_user)):
+    # transaction now has: shares, price, total_amount, stock_id=3, etc.
+    transaction =db.query(models.Transaction).filter(models.Transaction.id == transaction_id).first()
+    if not transaction: 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Transaction not Found")
+
+    if transaction.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"You are not authorized to view this receipt")
+    # stock now has: symbol="AAPL", name="Apple Inc.", etc.
+    stock =db.query(models.Stocks).filter(models.Stocks.id == transaction.stock_id).first()
+
+    #combining both the queries
+    result ={
+        "transaction_id": transaction.id,
+        "symbol": stock.symbol,
+        "name": stock.name,
+        "shares": transaction.shares,
+        "price_per_share": transaction.price_per_share,
+        "total_amount": transaction.total_amount,
+        "type": transaction.type,
+        "status": transaction.status,
+        "created_at": transaction.created_at
+    }
+    return result
+    
+
+
+    
+    
+    
     
     
         

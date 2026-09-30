@@ -41,6 +41,30 @@ class StockUpdate(BaseModel):
     description: str | None = None
 
 class PurchaseRequest(BaseModel):
+    shares: Decimal
+
+class TransactionOut(BaseModel):
+    id: int
+    stock_id: int
     shares: float
+    price_per_share: float
+    total_amount: float
+    type: str
+    status: str
+    created_at: datetime
+
+    class config:
+        orm_mode =True
+
+class Receipt(BaseModel):
+    transaction_id: int
+    symbol: str
+    name: str
+    shares: Decimal
+    price_per_share: float
+    total_amount: float
+    type: str
+    status: str
+    created_at: datetime
 
 

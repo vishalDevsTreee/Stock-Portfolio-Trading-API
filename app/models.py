@@ -44,7 +44,7 @@ class Holdings(Base):
     user_id =Column(Integer, ForeignKey("users.id"), nullable=False)
     stock_id =Column(Integer,ForeignKey("stocks.id") ,nullable=False)
     shares =Column(Numeric(18,8), nullable=False)
-    avg_buy_price =Column(Float, nullable=False)
+    avg_buy_price =Column(Numeric(18,8), nullable=False)
 
 class Transaction(Base):
     __tablename__ ="transactions"
