@@ -40,5 +40,7 @@ class StockUpdate(BaseModel):
     current_price: Decimal
     description: str | None = None
 
+class PurchaseRequest(BaseModel):
+    shares: float
 
 

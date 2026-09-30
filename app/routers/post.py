@@ -12,15 +12,15 @@ router = APIRouter()
 
 @router.get("/stocks", response_model=list[schemas.getStock])
 def get_stocks(db: Session=Depends(get_db)):
-    stocks = db.query(models.Stocks).all()
+    stocks = db.query(models.Stocks.is_active == True).all()
     if not stocks:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return stocks
 
 @router.get("/stocks/{id}", response_model=schemas.getStock)
 def get_stocks_byID(id: int, db: Session=Depends(get_db)):
-    stock =db.query(models.Stocks).filter(models.Stocks.id == id).first()
-
+    stock =db.query(models.Stocks).filter(models.Stocks.id == id, 
+                                          models.Stocks.is_active == True).first()
     if not stock:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Stock not found")
@@ -72,7 +72,7 @@ def delete_stock(id: int,
                  db: Session=Depends(get_db),
                  current_user =Depends(oauth2.get_current_user)):
     stock = db.query(models.Stocks).filter(models.Stocks.id == id).first()
-    if not stock:
+    if not stock or not stock.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Stock not Found")
     stock.is_active = False
@@ -81,3 +81,58 @@ def delete_stock(id: int,
 
     return stock
 
+@router.post("/stocks/{stock_id}/purchase", status_code=status.HTTP_201_CREATED, response_models=schemas.getStock)
+def purchase_stock(stock_id: int,
+                   data: schemas.PurchaseRequest,
+                   db: Session=Depends(get_db),
+                   current_user =Depends(oauth2.get_current_user)):
+    stock =db.query(models.Stocks).filter(models.Stocks.id == stock_id,
+                                          models.Stocks.is_active == True).first()
+    
+    user =db.query(models.User).filter(models.User.id == current_user.id,
+                                       models.Stocks.is_active == True).first()
+
+    if not stock:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Stock not found")
+
+    purchase_amount = stock.current_price * data.shares
+    if user.available_balance >= purchase_amount:
+        user.available_balance -= purchase_amount
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Insufficient Balance")
+
+    holding =db.query(models.Holdings).filter(models.Holdings.id == current_user.id,
+                                              models.Holdings.stock_id == stock_id).first()
+    if holding:
+        total_shares =holding.shares + data.shares
+        new_avg_price =(holding.shares * holding.avg_buy_price + data.shares * stock.current_price)/total_shares
+        holding.shares =total_shares
+        holding.avg_buy_price =new_avg_price
+    else:
+        new_holding =models.Holdings(user_id =current_user.id,
+                                     stock_id =stock_id,
+                                     shares =data.shares,
+                                     avg_buy_price =stock.current_price)
+        db.add(new_holding)
+
+    new_transaction =models.Transaction(
+                                        user_id =current_user.id,
+                                        stock_id =stock_id,
+                                        shares =data.shares,
+                                        price_per_share =stock.current_price,
+                                        total_amount =purchase_amount,
+                                        type =models.TransactionType.BUY,
+                                        status =models.TransactionStatus.COMPLETED
+                                        )
+    db.add(new_transaction)
+    db.commit()
+    db.refresh(new_transaction)
+
+    return new_transaction
+    
+    
+        
+
+    

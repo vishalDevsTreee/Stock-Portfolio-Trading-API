@@ -41,18 +41,18 @@ class Holdings(Base):
     __tablename__ = "holdings"
 
     id =Column(Integer, primary_key=True, nullable=False)
-    user_id =Column(Integer, nullable=False)
-    stock_id =Column(Integer, nullable=False)
-    shares =Column(Float, nullable=False)
+    user_id =Column(Integer, ForeignKey("users.id"), nullable=False)
+    stock_id =Column(Integer,ForeignKey("stocks.id") ,nullable=False)
+    shares =Column(Numeric(18,8), nullable=False)
     avg_buy_price =Column(Float, nullable=False)
 
 class Transaction(Base):
     __tablename__ ="transactions"
 
     id =Column(Integer, primary_key=True, nullable=False)
-    user_id =Column(Integer, ForeignKey("users.id", ondelete="CASCADE") ,nullable=False)
-    stock_id =Column(Integer, ForeignKey("stocks.id", ondelete="CASCADE"),nullable=False)
-    shares =Column(Float, nullable=False)
+    user_id =Column(Integer, ForeignKey("users.id") ,nullable=False)
+    stock_id =Column(Integer, ForeignKey("stocks.id"),nullable=False)
+    shares =Column(Numeric(18,8), nullable=False)
     price_per_share =Column(Float, nullable=False)
     total_amount =Column(Float, nullable=False)
     type =Column(
