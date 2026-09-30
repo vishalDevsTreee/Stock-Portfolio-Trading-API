@@ -81,7 +81,7 @@ def delete_stock(id: int,
 
     return stock
 
-@router.post("/stocks/{stock_id}/purchase", status_code=status.HTTP_201_CREATED, response_models=schemas.getStock)
+@router.post("/stocks/{stock_id}/purchase", status_code=status.HTTP_201_CREATED, response_model=schemas.getStock)
 def purchase_stock(stock_id: int,
                    data: schemas.PurchaseRequest,
                    db: Session=Depends(get_db),
