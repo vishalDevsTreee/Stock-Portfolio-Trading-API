@@ -68,3 +68,4 @@ class Receipt(BaseModel):
     created_at: datetime
 
 
+

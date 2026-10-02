@@ -161,6 +161,19 @@ def stock_receipt(transaction_id: int,
         "created_at": transaction.created_at
     }
     return result
+
+@router.get("/stocks/lookup/{symbol}")
+def lookup_stock(symbol: str):
+
+    try:
+        data = market_data.fetch_stock_data(symbol)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except requests.RequestException:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="Failed to reach market data provider")
+
+    return data
     
 
 
